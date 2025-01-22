@@ -2,13 +2,19 @@ import * as z from "zod"
 
 export const loginFormSchema = z.object({
   email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().regex(
+    /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*]).{8,}$/,
+    "Password must contain at least 8 characters, including uppercase, lowercase, number and special character"
+  ),
 })
 
 export const registerFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().regex(
+    /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*]).{8,}$/,
+    "Password must contain at least 8 characters, including uppercase, lowercase, number and special character"
+  ),
   role: z.enum(["Patient", "Doctor"]),
   phoneNumber: z.string().min(8, "Invalid phone number"),
   CIN: z.string().min(6, "Invalid CIN"),

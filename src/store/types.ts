@@ -39,11 +39,12 @@ export interface DoctorPatient extends BaseUser {
     treatment: string;
     date: string;
   }[];
-  vitals?: {
-    bloodPressure?: string;
-    heartRate?: string;
-    temperature?: string;
-  };
+  vitals?: VitalSigns;
+  isValidated?: boolean;
+  role: 'Doctor' | 'Patient' | 'Admin';
+  availability?: any[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Department {
@@ -102,14 +103,60 @@ export interface MedicalRecord {
 }
 
 export interface DoctorStats {
-  totalPatients: number;
-  appointmentsByStatus: { status: string; count: number }[];
+  overview: {
+    _id: null;
+    totalAppointments: number;
+    confirmedAppointments: number;
+    completedAppointments: number;
+    cancelledAppointments: number;
+    totalRevenue: number;
+  };
+  graphData: {
+    monthly: Array<{
+      _id: {
+        year: number;
+        month: number;
+      };
+      total: number;
+      completed: number;
+      cancelled: number;
+      revenue: number;
+    }>;
+    daily: Array<{
+      _id: {
+        year: number;
+        month: number;
+        day: number;
+      };
+      total: number;
+      completed: number;
+      cancelled: number;
+    }>;
+    timeSlotDistribution: Array<{
+      _id: number;
+      count: number;
+    }>;
+  };
+  patientAnalytics: {
+    _id: null;
+    totalUniquePatients: number;
+    averageAge: number | null;
+  };
+  periodComparisons: {
+    thisMonth: number;
+    thisWeek: number;
+    today: number;
+  };
+  performanceMetrics: {
+    completionRate: string;
+    cancellationRate: string;
+    averageAppointmentsPerDay: string;
+  };
 }
 
 export interface DoctorAvailability {
   day: string;
   slots: Array<{
-    _id: string;
     time: string;
     isBooked: boolean;
   }>;
@@ -122,22 +169,66 @@ export interface VitalSigns {
 }
 
 export interface MedicalHistory {
+  _id: string;
   diagnosis: string;
-  prescription: string[];
+  prescription: {
+    medications: Array<{
+      name: string;
+      dosage: string;
+      frequency: string;
+      duration: string;
+      _id: string;
+    }>;
+  };
   notes?: string;
-  vitalSigns: VitalSigns;
-  followUpDate?: string;
+  attachments: any[];
   createdAt: string;
+  appointment?: {
+    _id: string;
+    patient: string;
+    doctor: string;
+    department: string;
+    appointmentDate: string;
+    reason: string;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+  followUpDate?: string;
+}
+
+export interface PatientInfo {
+  _id: string;
+  name: string;
+  email: string;
+  phoneNumber: string;
+  CIN: string;
+  role: string;
+  medicalHistory?: string;
+  isValidated: boolean;
+  availability: any[];
+  createdAt: string;
+  updatedAt: string;
+  vitals?: VitalSigns;
 }
 
 export interface PatientWithHistory {
-  patient: {
-    _id: string;
-    name: string;
-    email: string;
-    phoneNumber: string;
-    CIN: string;
-    vitals?: VitalSigns;
-  };
+  _id: string;
+  patient: PatientInfo;
   histories: MedicalHistory[];
+  totalVisits: number;
+  lastVisit: string;
+  historySummary: {
+    totalRecords: number;
+    lastVisit: string;
+    conditions: string[];
+    allergies: string[];
+    recentDiagnoses: string[];
+  };
+}
+
+export interface DoctorPatientsHistories {
+  totalPatients: number;
+  totalRecords: number;
+  patients: PatientWithHistory[];
 } 

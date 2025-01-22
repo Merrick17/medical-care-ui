@@ -11,7 +11,6 @@ const navigation = [
   { name: "Dashboard", href: "/patient", icon: Home },
   { name: "Appointments", href: "/patient/appointments", icon: Calendar },
   { name: "Medical History", href: "/patient/history", icon: FileText },
-  { name: "Profile", href: "/patient/profile", icon: User },
   { name: "Settings", href: "/patient/settings", icon: Settings },
 ];
 

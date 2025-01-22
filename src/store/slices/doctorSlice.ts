@@ -1,12 +1,11 @@
 import { StateCreator } from 'zustand';
-import { User, Appointment, DoctorStats, DoctorPatient, PatientWithHistory } from '../types';
+import { User, Appointment, DoctorStats, DoctorPatient, PatientWithHistory, DoctorPatientsHistories } from '../types';
 import { getApi, postApi, putApi, deleteApi } from '@/lib/apiHelpers';
 import useStore from '..';
 
 interface DoctorAvailability {
   day: string;
   slots: Array<{
-    _id: string;
     time: string;
     isBooked: boolean;
   }>;
@@ -20,7 +19,7 @@ export interface DoctorSlice {
   error: string | null;
   doctorPatients: DoctorPatient[];
   user: User | null;
-  doctorPatientsHistories: PatientWithHistory[];
+  doctorPatientsHistories: DoctorPatientsHistories;
   // Fetch operations
   fetchDoctors: () => Promise<void>;
   fetchDoctorAppointments: () => Promise<void>;
@@ -52,12 +51,45 @@ export const createDoctorSlice: StateCreator<
 > = (set, get) => ({
   doctors: [],
   doctorAppointments: [],
-  doctorStats: { totalPatients: 0, appointmentsByStatus: [] },
+  doctorStats: { 
+    overview: {
+      _id: null,
+      totalAppointments: 0,
+      confirmedAppointments: 0,
+      completedAppointments: 0,
+      cancelledAppointments: 0,
+      totalRevenue: 0
+    },
+    graphData: {
+      monthly: [],
+      daily: [],
+      timeSlotDistribution: []
+    },
+    patientAnalytics: {
+      _id: null,
+      totalUniquePatients: 0,
+      averageAge: null
+    },
+    periodComparisons: {
+      thisMonth: 0,
+      thisWeek: 0,
+      today: 0
+    },
+    performanceMetrics: {
+      completionRate: "0",
+      cancellationRate: "0",
+      averageAppointmentsPerDay: "0"
+    }
+  },
   isLoading: false,
   error: null,
   doctorPatients: [],
   user: null,
-  doctorPatientsHistories: [],
+  doctorPatientsHistories: {
+    totalPatients: 0,
+    totalRecords: 0,
+    patients: []
+  },
 
   // Fetch all doctors
   fetchDoctors: async () => {
@@ -363,6 +395,8 @@ export const createDoctorSlice: StateCreator<
           if (value !== undefined) {
             if (value instanceof File) {
               formData.append(key, value);
+            } else if (typeof value === 'object') {
+              formData.append(key, JSON.stringify(value));
             } else {
               formData.append(key, String(value));
             }
@@ -370,9 +404,20 @@ export const createDoctorSlice: StateCreator<
         });
       }
 
-      const updatedProfile = await putApi('/doctor/profile', formData);
+      // Update the profile
+      await putApi('/doctors/profile', formData);
+
+      // Fetch the complete updated profile
+      const currentUser = useStore.getState().user;
+      if (!currentUser?._id) {
+        throw new Error('No authenticated doctor found');
+      }
+
+      const updatedProfile = await getApi(`/doctors/${currentUser._id}/profile`);
+      
+      // Update the user state with the complete updated profile
       set(state => ({
-        user: state.user ? { ...state.user, ...updatedProfile } : null
+        user: updatedProfile
       }));
 
       return updatedProfile;
@@ -396,12 +441,12 @@ export const createDoctorSlice: StateCreator<
         availability
       });
 
-      // Update the user state with the new availability
+      // Fetch the updated doctor profile
+      const updatedProfile = await getApi(`/doctors/${currentUser._id}/profile`);
+
+      // Update the user state with the complete updated profile
       set(state => ({
-        user: state.user ? {
-          ...state.user,
-          availability: updatedAvailability
-        } : null
+        user: updatedProfile
       }));
 
       return updatedAvailability;
@@ -417,7 +462,7 @@ export const createDoctorSlice: StateCreator<
   fetchPatientsHistories: async () => {
     set({ isLoading: true, error: null });
     try {
-      const response = await getApi('/api/medical-history/doctor/patients');
+      const response = await getApi('/medical-history/doctor/patients');
       if (response) {
         set({ 
           doctorPatientsHistories: response 

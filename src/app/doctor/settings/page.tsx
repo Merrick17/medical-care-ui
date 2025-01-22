@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { User2, Calendar, Mail, Phone, Building2, FileText } from "lucide-react";
-import { postApi, putApi } from "@/lib/apiHelpers";
+import { postApi, putApi, getApi } from "@/lib/apiHelpers";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -22,7 +22,6 @@ const TIME_SLOTS = Array.from({ length: 20 }, (_, i) => {
 
 // First, let's define proper types for our availability data
 interface TimeSlot {
-  _id: string;
   time: string;
   isBooked: boolean;
 }
@@ -30,7 +29,6 @@ interface TimeSlot {
 interface DayAvailability {
   day: string;
   slots: TimeSlot[];
-  _id: string;
 }
 
 export default function DoctorSettings() {
@@ -42,7 +40,7 @@ export default function DoctorSettings() {
     phoneNumber: user?.phoneNumber || '',
     CIN: user?.CIN || '',
     specialization: user?.specialization || '',
-    department: user?.department || '',
+    departmentId: user?.departmentId || '',
   });
 
   const [profileImage, setProfileImage] = useState<File | null>(null);
@@ -54,8 +52,7 @@ export default function DoctorSettings() {
 
     return DAYS.map(day => ({
       day,
-      slots: [],
-      _id: `temp-${day.toLowerCase()}`
+      slots: []
     }));
   });
 
@@ -67,14 +64,13 @@ export default function DoctorSettings() {
         phoneNumber: user.phoneNumber || '',
         CIN: user.CIN || '',
         specialization: user.specialization || '',
-        department: user.department || '',
+        departmentId: user.departmentId || '',
       });
 
       if (!user.availability || user.availability.length === 0) {
         setAvailability(DAYS.map(day => ({
           day,
-          slots: [],
-          _id: `temp-${day.toLowerCase()}`
+          slots: []
         })));
       } else {
         setAvailability(user.availability);
@@ -101,6 +97,17 @@ export default function DoctorSettings() {
         formDataToSend.append('diplomaImage', diplomaImage);
       }
 
+      // Add availability data if it exists
+      if (availability && availability.length > 0) {
+        formDataToSend.append('availability', JSON.stringify(availability.map(day => ({
+          day: day.day,
+          slots: day.slots.map(slot => ({
+            time: slot.time,
+            isBooked: slot.isBooked
+          }))
+        }))));
+      }
+
       // Use the store action to update profile
       await updateDoctorProfile(formDataToSend);
       
@@ -108,6 +115,17 @@ export default function DoctorSettings() {
       setProfileImage(null);
       setDiplomaImage(null);
       setIsEditing(false);
+
+      // Refetch the doctor's profile
+      const currentUser = useStore.getState().user;
+      if (currentUser?._id) {
+        const response = await getApi(`/doctors/${currentUser._id}/profile`);
+        if (response) {
+          useStore.setState(state => ({
+            user: { ...state.user, ...response }
+          }));
+        }
+      }
     } catch (error) {
       console.error('Failed to update profile:', error);
       // You might want to show an error toast here
@@ -132,19 +150,23 @@ export default function DoctorSettings() {
       // Use the store action instead of direct API call
       await updateDoctorAvailabilityProfile(formattedAvailability);
 
-      // No need to manually update state as the store will handle it
-      // The store will update the user's availability which will trigger a re-render
-
     } catch (error) {
       console.error('Failed to update availability:', error);
-      // You might want to show an error toast here
     }
   };
 
   const toggleTimeSlot = (dayIndex: number, timeStr: string) => {
     const newAvailability = [...availability];
-    const daySlots = newAvailability[dayIndex].slots;
+    
+    // Ensure the day exists in availability
+    if (!newAvailability[dayIndex]) {
+      newAvailability[dayIndex] = {
+        day: DAYS[dayIndex],
+        slots: []
+      };
+    }
 
+    const daySlots = newAvailability[dayIndex].slots || [];
     const existingSlot = daySlots.find(slot => slot.time === timeStr);
 
     if (existingSlot) {
@@ -153,7 +175,6 @@ export default function DoctorSettings() {
     } else {
       // Add new slot
       const newSlot: TimeSlot = {
-        _id: `${dayIndex}-${timeStr}`, // Generate a temporary ID
         time: timeStr,
         isBooked: false
       };

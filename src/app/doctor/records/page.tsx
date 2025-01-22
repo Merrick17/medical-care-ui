@@ -22,7 +22,7 @@ import {
 import { Search, Plus, FileText, User2, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import MedicalRecordForm from "@/components/medical-history/medical-record-form";
-import { DoctorPatient, PatientWithHistory } from "@/store/types";
+import { DoctorPatient, PatientWithHistory, PatientInfo } from "@/store/types";
 import { useToast } from "@/hooks/use-toast";
 import {
   FormField,
@@ -84,7 +84,7 @@ export default function DoctorRecords() {
   }, [error, toast]);
 
   // Filter patients based on search query
-  const filteredPatients = doctorPatientsHistories?.filter(patient =>
+  const filteredPatients = doctorPatientsHistories?.patients?.filter(patient =>
     patient.patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     patient.patient.email.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
@@ -271,6 +271,31 @@ export default function DoctorRecords() {
                       <label className="text-sm font-medium">CIN</label>
                       <p>{selectedPatient.patient.CIN}</p>
                     </div>
+                    {selectedPatient.patient.medicalHistory && (
+                      <div className="col-span-2">
+                        <label className="text-sm font-medium">Medical History</label>
+                        <p>{selectedPatient.patient.medicalHistory}</p>
+                      </div>
+                    )}
+                    <div className="col-span-2">
+                      <label className="text-sm font-medium">Visit Summary</label>
+                      <div className="mt-1 space-y-1 text-sm">
+                        <p>Total Visits: {selectedPatient.totalVisits}</p>
+                        {selectedPatient.lastVisit && (
+                          <p>Last Visit: {format(new Date(selectedPatient.lastVisit), 'PPP')}</p>
+                        )}
+                        {selectedPatient.historySummary?.recentDiagnoses?.length > 0 && (
+                          <div>
+                            <p className="font-medium mt-2">Recent Diagnoses:</p>
+                            <ul className="list-disc list-inside">
+                              {selectedPatient.historySummary.recentDiagnoses.map((diagnosis, idx) => (
+                                <li key={idx}>{diagnosis}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -299,21 +324,15 @@ export default function DoctorRecords() {
                           <h4 className="text-sm font-medium mb-1">Diagnosis</h4>
                           <p className="text-sm">{history.diagnosis}</p>
                         </div>
-                        <div>
-                          <h4 className="text-sm font-medium mb-1">Vital Signs</h4>
-                          <div className="text-sm">
-                            {Object.entries(history.vitalSigns).map(([key, value]) => (
-                              <p key={key}>{key}: {value}</p>
-                            ))}
-                          </div>
-                        </div>
                       </div>
 
                       <div className="mt-4">
                         <h4 className="text-sm font-medium mb-1">Prescriptions</h4>
-                        <ul className="list-disc list-inside text-sm">
-                          {history.prescription.map((med, idx) => (
-                            <li key={idx}>{med}</li>
+                        <ul className="list-disc list-inside text-sm space-y-2">
+                          {history.prescription.medications.map((med, idx) => (
+                            <li key={idx} className="pl-2">
+                              <span className="font-medium">{med.name}</span> - {med.dosage}, {med.frequency} for {med.duration}
+                            </li>
                           ))}
                         </ul>
                       </div>
@@ -322,6 +341,24 @@ export default function DoctorRecords() {
                         <div className="mt-4">
                           <h4 className="text-sm font-medium mb-1">Notes</h4>
                           <p className="text-sm">{history.notes}</p>
+                        </div>
+                      )}
+
+                      {history.appointment && (
+                        <div className="mt-4">
+                          <h4 className="text-sm font-medium mb-1">Appointment Details</h4>
+                          <div className="text-sm space-y-1">
+                            <p>Reason: {history.appointment.reason}</p>
+                            <p>Status: {history.appointment.status}</p>
+                            <p>Date: {format(new Date(history.appointment.appointmentDate), 'PPP')}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {history.followUpDate && (
+                        <div className="mt-4">
+                          <h4 className="text-sm font-medium mb-1">Follow-up Date</h4>
+                          <p className="text-sm">{format(new Date(history.followUpDate), 'PPP')}</p>
                         </div>
                       )}
                     </div>
@@ -382,15 +419,30 @@ export default function DoctorRecords() {
                           const patient = doctorPatients.find(p => p._id === value);
                           if (patient) {
                             setPatientForNewRecord({
+                              _id: patient._id,
                               patient: {
                                 _id: patient._id,
                                 name: patient.name,
                                 email: patient.email,
                                 phoneNumber: patient.phoneNumber,
                                 CIN: patient.CIN,
+                                role: patient.role,
+                                isValidated: patient.isValidated || true,
+                                availability: patient.availability || [],
+                                createdAt: patient.createdAt || new Date().toISOString(),
+                                updatedAt: patient.updatedAt || new Date().toISOString(),
                                 vitals: patient.vitals
                               },
-                              histories: []
+                              histories: [],
+                              totalVisits: 0,
+                              lastVisit: '',
+                              historySummary: {
+                                totalRecords: 0,
+                                lastVisit: '',
+                                conditions: [],
+                                allergies: [],
+                                recentDiagnoses: []
+                              }
                             });
                           }
                         }}
