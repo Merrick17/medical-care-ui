@@ -8,7 +8,13 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export default function PatientSettings() {
-  const { patientProfile, updatePatientProfile, isLoading } = useStore();
+  const { 
+    patientProfile, 
+    updatePatientProfile, 
+    updatePatientProfilePicture, 
+    fetchPatientProfile,
+    isLoading 
+  } = useStore();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: patientProfile?.name || '',
@@ -20,6 +26,13 @@ export default function PatientSettings() {
 
   const handleProfileUpdate = async () => {
     try {
+      // Handle profile picture upload first if a new image is selected
+      if (profileImage) {
+        await updatePatientProfilePicture(profileImage);
+        await fetchPatientProfile(); // Refetch profile after image upload
+      }
+
+      // Then update other profile information
       const formDataToSend = new FormData();
       
       Object.entries(formData).forEach(([key, value]) => {
@@ -28,12 +41,9 @@ export default function PatientSettings() {
         }
       });
 
-      if (profileImage) {
-        formDataToSend.append('profileImage', profileImage);
-      }
-
       await updatePatientProfile(formDataToSend);
       setIsEditing(false);
+      setProfileImage(null);
     } catch (error) {
       console.error('Failed to update profile:', error);
     }

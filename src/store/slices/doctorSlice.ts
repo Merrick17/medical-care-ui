@@ -27,6 +27,7 @@ export interface DoctorSlice {
   fetchDoctorAvailability: (doctorId: string) => Promise<void>;
   fetchDoctorPatients: () => Promise<void>;
   fetchPatientsHistories: () => Promise<void>;
+  fetchDoctorProfile: () => Promise<void>;
   // Mutation operations
   createDoctor: (formData: FormData) => Promise<void>;
   updateDoctorAvailability: (doctorId: string, availability: any[]) => Promise<void>;
@@ -41,6 +42,8 @@ export interface DoctorSlice {
   // Profile management
   updateDoctorProfile: (data: FormData | Record<string, any>) => Promise<void>;
   updateDoctorAvailabilityProfile: (availability: DoctorAvailability[]) => Promise<void>;
+  updateDoctorProfilePicture: (file: File) => Promise<void>;
+  updateDoctorDiploma: (file: File) => Promise<void>;
 }
 
 export const createDoctorSlice: StateCreator<
@@ -472,6 +475,89 @@ export const createDoctorSlice: StateCreator<
     } catch (error: any) {
       set({ error: error.message || 'Failed to fetch medical histories' });
       console.error('Failed to fetch patients medical histories:', error);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  // Update doctor's profile picture
+  updateDoctorProfilePicture: async (file: File) => {
+    set({ isLoading: true, error: null });
+    try {
+      const formData = new FormData();
+      formData.append('profileImage', file);
+
+      await putApi('/doctors/profile-picture', formData);
+
+      // Fetch the complete updated profile
+      const currentUser = useStore.getState().user;
+      if (!currentUser?._id) {
+        throw new Error('No authenticated doctor found');
+      }
+
+      const updatedProfile = await getApi(`/doctors/${currentUser._id}/profile`);
+      
+      // Update the user state with the complete updated profile
+      set(state => ({
+        user: updatedProfile
+      }));
+
+      return updatedProfile;
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to update profile picture' });
+      throw error;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  // Update doctor's diploma
+  updateDoctorDiploma: async (file: File) => {
+    set({ isLoading: true, error: null });
+    try {
+      const formData = new FormData();
+      formData.append('diplomaImage', file);
+
+      await putApi('/doctors/diploma', formData);
+
+      // Fetch the complete updated profile
+      const currentUser = useStore.getState().user;
+      if (!currentUser?._id) {
+        throw new Error('No authenticated doctor found');
+      }
+
+      const updatedProfile = await getApi(`/doctors/${currentUser._id}/profile`);
+      
+      // Update the user state with the complete updated profile
+      set(state => ({
+        user: updatedProfile
+      }));
+
+      return updatedProfile;
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to update diploma' });
+      throw error;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  // Add fetchDoctorProfile implementation
+  fetchDoctorProfile: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const currentUser = useStore.getState().user;
+      if (!currentUser?._id) {
+        throw new Error('No authenticated doctor found');
+      }
+
+      const response = await getApi(`/doctors/${currentUser._id}/profile`);
+      if (response) {
+        set({ user: response });
+      }
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to fetch doctor profile' });
+      console.error('Failed to fetch doctor profile:', error);
     } finally {
       set({ isLoading: false });
     }
