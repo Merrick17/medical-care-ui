@@ -21,6 +21,7 @@ export interface PatientSlice {
 
   // Mutation operations
   updatePatientProfile: (data: FormData) => Promise<void>;
+  updatePatientProfilePicture: (file: File) => Promise<void>;
   bookAppointment: (appointmentData: any) => Promise<void>;
   cancelAppointment: (appointmentId: string) => Promise<void>;
   updateMedicalHistory: (data: Partial<MedicalRecord>) => Promise<void>;
@@ -110,6 +111,24 @@ export const createPatientSlice: StateCreator<PatientSlice> = (set, get) => ({
       set({ patientProfile: response });
     } catch (error: any) {
       set({ error: error.message });
+      throw error;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  updatePatientProfilePicture: async (file: File) => {
+    set({ isLoading: true, error: null });
+    try {
+      const formData = new FormData();
+      formData.append('profileImage', file);
+
+      await putApi('/patients/profile-picture', formData);
+
+      // Refetch the patient profile to get updated data
+      await get().fetchPatientProfile();
+    } catch (error: any) {
+      set({ error: error.message || 'Failed to update profile picture' });
       throw error;
     } finally {
       set({ isLoading: false });

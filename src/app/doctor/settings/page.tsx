@@ -10,8 +10,8 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { User2, Calendar, Mail, Phone, Building2, FileText } from "lucide-react";
-import { postApi, putApi, getApi } from "@/lib/apiHelpers";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const TIME_SLOTS = Array.from({ length: 20 }, (_, i) => {
@@ -32,7 +32,16 @@ interface DayAvailability {
 }
 
 export default function DoctorSettings() {
-  const { user, updateDoctorProfile, updateDoctorAvailabilityProfile } = useStore();
+  const { 
+    user, 
+    departments,
+    updateDoctorProfile, 
+    updateDoctorAvailabilityProfile,
+    updateDoctorProfilePicture,
+    updateDoctorDiploma,
+    fetchDoctorProfile,
+    fetchDepartments
+  } = useStore();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -55,6 +64,10 @@ export default function DoctorSettings() {
       slots: []
     }));
   });
+
+  useEffect(() => {
+    fetchDepartments();
+  }, [fetchDepartments]);
 
   useEffect(() => {
     if (user) {
@@ -80,6 +93,17 @@ export default function DoctorSettings() {
 
   const handleProfileUpdate = async () => {
     try {
+      // Handle file uploads first if new files are selected
+      if (profileImage) {
+        await updateDoctorProfilePicture(profileImage);
+        await fetchDoctorProfile(); // Refetch profile after image upload
+      }
+      if (diplomaImage) {
+        await updateDoctorDiploma(diplomaImage);
+        await fetchDoctorProfile(); // Refetch profile after diploma upload
+      }
+
+      // Then update other profile information
       const formDataToSend = new FormData();
       
       // Add all form fields to FormData
@@ -88,14 +112,6 @@ export default function DoctorSettings() {
           formDataToSend.append(key, value);
         }
       });
-
-      // Add images only if they were changed
-      if (profileImage) {
-        formDataToSend.append('profileImage', profileImage);
-      }
-      if (diplomaImage) {
-        formDataToSend.append('diplomaImage', diplomaImage);
-      }
 
       // Add availability data if it exists
       if (availability && availability.length > 0) {
@@ -115,20 +131,8 @@ export default function DoctorSettings() {
       setProfileImage(null);
       setDiplomaImage(null);
       setIsEditing(false);
-
-      // Refetch the doctor's profile
-      const currentUser = useStore.getState().user;
-      if (currentUser?._id) {
-        const response = await getApi(`/doctors/${currentUser._id}/profile`);
-        if (response) {
-          useStore.setState(state => ({
-            user: { ...state.user, ...response }
-          }));
-        }
-      }
     } catch (error) {
       console.error('Failed to update profile:', error);
-      // You might want to show an error toast here
     }
   };
 
@@ -271,14 +275,36 @@ export default function DoctorSettings() {
 
                 <Separator />
 
-                <div className="space-y-2">
-                  <Label htmlFor="specialization">Specialization</Label>
-                  <Input
-                    id="specialization"
-                    value={formData.specialization}
-                    onChange={e => setFormData({ ...formData, specialization: e.target.value })}
-                    disabled={!isEditing}
-                  />
+                <div className="grid gap-4 grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="specialization">Specialization</Label>
+                    <Input
+                      id="specialization"
+                      value={formData.specialization}
+                      onChange={e => setFormData({ ...formData, specialization: e.target.value })}
+                      disabled={!isEditing}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="department">Department</Label>
+                    <Select
+                      value={formData.departmentId}
+                      onValueChange={(value) => setFormData({ ...formData, departmentId: value })}
+                      disabled={!isEditing}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select department" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departments?.map((dept) => (
+                          <SelectItem key={dept._id} value={dept._id}>
+                            {dept.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
