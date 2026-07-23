@@ -29,13 +29,13 @@
     "@radix-ui/react-switch": "^1.1.2",
     "@radix-ui/react-tabs": "^1.1.2",
     "@radix-ui/react-toast": "^1.2.4",
-    "axios": "^1.7.9",
+    "axios": "^1.18.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "4.1.0",
     "framer-motion": "^11.18.1",
     "lucide-react": "^0.473.0",
-    "next": "15.1.5",
+    "next": "15.5.21",
     "openai": "4.79.1",
     "react": "^18.3.1",
     "react-day-picker": "8.10.1",
@@ -53,7 +53,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "postcss": "^8",
-    "tailwindcss": "^3.4.1",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5"
   }
 }
